@@ -2,14 +2,14 @@
 -- Company:  FPGA'er
 -- Engineer: Claudio Avi Chami - FPGA'er Website
 --           http://fpgaer.tech
--- Create Date: 11.09.2022 
+-- Create Date: 01.10.2022 
 -- Module Name: tb_par2ser.vhd
 -- Description: Testbench for parallel to serial converter
 -- Dependencies: par2ser.vhd
 -- 
--- Revision: 1
+-- Revision: 2
 -- Revision  1 - File Created
--- 
+--           2 - Changes for revision 2 of par2ser
 ----------------------------------------------------------------------------------------------------------------------------------------------------
 library ieee;
   use ieee.std_logic_1164.all;
@@ -22,28 +22,28 @@ architecture test of tb_par2ser is
 
     constant PERIOD  : time   := 20 ns;
     constant DATA_W  : natural := 4;
+    constant DATA_W2 : natural := 4;
 	
     signal clk       : std_logic := '0';
     signal load      : std_logic := '0';
+    signal load2     : std_logic := '0';
     signal busy      : std_logic ;
-    signal data_in   : std_logic_vector (3 downto 0);
+    signal busy2     : std_logic ;
+    signal data_in   : std_logic_vector(3 downto 0);
+    signal data_in2  : std_logic_vector(8 downto 0);
     signal endSim	 : boolean   := false;
 
   component par2ser  is
-	generic (
-		DATA_W		: natural := 8
-	);
 	port (
 		clk: 		in std_logic;
 		
 		-- inputs
-		data_in:	in std_logic_vector (DATA_W-1 downto 0);
+		data_in:	in std_logic_vector;
 		load: 		in std_logic;
 		
 		-- outputs
 		data_out: 	out std_logic;
 		busy:		out std_logic;
-		valid:		out std_logic;
 		frame:		out std_logic
 	);
     end component;
@@ -52,8 +52,8 @@ architecture test of tb_par2ser is
 begin
     clk     <= not clk after PERIOD/2;
 
-	-- Main simulation process
-	process 
+	-- Main simulation process for data
+	data_pr: process 
 	begin
 	
 		wait until (rising_edge(clk));
@@ -84,9 +84,34 @@ begin
 		for i in 0 to DATA_W loop
 		  wait until (rising_edge(clk));
 		end loop;
-		endSim  <= true;
+        wait;
+        
+	end	process data_pr;	
 
-	end	process;	
+	data_pr2: process 
+	begin
+	
+		wait until (rising_edge(clk));
+
+		data_in2 <= "011001010";
+		load2	<= '1';
+		wait until (rising_edge(clk));
+		load2	<= '0';
+		wait until (rising_edge(clk));
+		wait until (busy2 = '0');
+		wait until (rising_edge(clk));
+
+		data_in2 <= "101011011";
+		load2	<= '1';
+		wait until (rising_edge(clk));
+		load2	<= '0';
+		wait until (rising_edge(clk));
+		wait until (busy2 = '0');
+		wait until (rising_edge(clk));
+		wait until (rising_edge(clk));
+
+        endSim <= true;        
+	end	process data_pr2;	
 		
 	-- End the simulation
 	process 
@@ -100,9 +125,6 @@ begin
 	end process;	
 
   par2ser_inst : par2ser
-  generic map (
-		DATA_W	 => DATA_W
-	)
   port map (
     clk      => clk,
     
@@ -111,7 +133,18 @@ begin
     
     data_out => open,
     busy     => busy,
-    valid    => open,
+		frame	   => open
+  );
+  
+  par2ser_inst2 : par2ser
+  port map (
+    clk      => clk,
+    
+    data_in  => data_in2,
+    load     => load2,
+    
+    data_out => open,
+    busy     => busy2,
 		frame	   => open
   );
 
