@@ -7,10 +7,11 @@
 -- Description: Parallel to serial converter
 -- Dependencies: none
 -- 
--- Revision: 2
+-- Revision: 3
 -- Revision  1 - File Created
 --           2 - Simplified using unconstrained ports and Vivado built-in functions
 --               Based heavily on code written by user "asp_digital" on Reddit
+--           3 - Added normalization for unconstrained input using alias
 ----------------------------------------------------------------------------------------------------------------------------------------------------
 
 
@@ -35,6 +36,8 @@ end par2ser;
 architecture rtl of par2ser is
   signal cnt : natural range 0 to data_in'left;
   signal reg : std_logic_vector (data_in'left downto 0) := (others => '0');
+  -- normalize the unconstrained input
+  alias data_in_norm : std_logic_vector(data_in'length - 1 downto 0) is data_in; -- normalized unconstrained input
 
 begin
 
@@ -49,13 +52,14 @@ begin
 
       -- busy flag should be cleared when not shifting.
       -- It gets set immediately on load, overriding this.
-      EndBusy : if cnt = 0 then
+      -- Busy can be cleared on the last clock of the current data transmision
+      EndBusy : if cnt = 1 then
         busy <= '0';
       end if EndBusy;
 
       ParallelReg : if (load = '1') then
-        reg <= data_in; -- load parallel register
-        cnt <= data_in'left; -- size of the parallel register
+        reg <= data_in_norm; -- load parallel register
+        cnt <= data_in_norm'left; -- size of the parallel register
         busy <= '1'; -- ensure immediate busy flag
       end if ParallelReg;
 
